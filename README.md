@@ -11,7 +11,7 @@ The skills use the same check ids and fix text as the free [nextjs-supabase-stri
 
 **Claude Code plugin:**
 
-*(Validated with `claude plugin validate --strict` and tested from a local clone; install from GitHub not yet tested.)*
+*(Validated with `claude plugin validate --strict`; install from GitHub tested 14 Oct 2026 with Claude Code 2.1.296 in a clean profile.)*
 ```
 /plugin marketplace add edtrackai/ship-ready-skills
 /plugin install ship-ready-skills@ship-ready-skills
