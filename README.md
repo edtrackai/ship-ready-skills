@@ -9,6 +9,14 @@ The skills use the same check ids and fix text as the free [nextjs-supabase-stri
 
 ## Install
 
+**skills CLI** (Claude Code, Cursor and other agents that read Agent Skills):
+```bash
+npx skills add edtrackai/ship-ready-skills
+# or just one skill:
+npx skills add edtrackai/ship-ready-skills --skill supabase-rls-review
+```
+*(Tested 14 Oct 2026 with skills 1.7.2 on Node 22, which that CLI requires: both commands installed the skills into `./.agents/skills/` in an empty folder.)*
+
 **Claude Code plugin:**
 
 *(Validated with `claude plugin validate --strict`; install from GitHub tested 14 Oct 2026 with Claude Code 2.1.296 in a clean profile.)*
