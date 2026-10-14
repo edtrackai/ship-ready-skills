@@ -58,7 +58,7 @@ The skill asks for a report in this shape: one summary line (files read, finding
 
 *Ad (paid, from the same author):* the [AI Rules v2 pack](https://edtrackai.github.io/ai-rules?utm_source=skills&utm_medium=readme&utm_campaign=ship-ready-skills&utm_content=ai-rules) ($19; UK buyers pay $22.80 incl. VAT) adds rules, more skills and guardrail hooks for this stack.
 
-*Ad (paid, from the same author):* [Launch Audit](https://edtrackai.github.io/launch-audit?utm_source=skills&utm_medium=readme&utm_campaign=ship-ready-skills&utm_content=launch-audit) ($12; UK buyers pay $14.40 incl. VAT) runs 28 automated checks plus an auditor agent with no file-editing tools, and gives a ready / not-ready report with a fix plan.
+*Ad (paid, from the same author):* [Launch Audit](https://edtrackai.github.io/launch-audit?utm_source=skills&utm_medium=readme&utm_campaign=ship-ready-skills&utm_content=launch-audit) ($12; UK buyers pay $14.40 incl. VAT) runs 28 automated checks plus an auditor agent with no Edit or Write tools, and gives a ready / not-ready report with a fix plan.
 
 *Claude Code, Next.js, Supabase and Stripe are trademarks of their respective owners. This project isn't affiliated with or endorsed by them.*
 
