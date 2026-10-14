@@ -1,0 +1,15 @@
+{
+  "name": "ship-ready-skills",
+  "owner": { "name": "Stack & Ship", "url": "https://edtrackai.github.io" },
+  "metadata": { "description": "Free Claude Code review skills for Next.js + Supabase + Stripe." },
+  "plugins": [
+    {
+      "name": "ship-ready-skills",
+      "source": "./",
+      "description": "supabase-rls-review + stripe-webhook-review: read-only review skills for Supabase migrations and Stripe webhook handlers.",
+      "version": "0.1.0",
+      "license": "MIT",
+      "category": "security"
+    }
+  ]
+}

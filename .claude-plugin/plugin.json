@@ -1,0 +1,10 @@
+{
+  "name": "ship-ready-skills",
+  "version": "0.1.0",
+  "description": "Free review skills for Next.js + Supabase + Stripe: supabase-rls-review (RLS and Data API grants) and stripe-webhook-review (signature, raw body, pending/completed idempotency).",
+  "author": { "name": "Stack & Ship", "url": "https://edtrackai.github.io" },
+  "homepage": "https://github.com/edtrackai/ship-ready-skills",
+  "repository": "https://github.com/edtrackai/ship-ready-skills",
+  "license": "MIT",
+  "keywords": ["claude-code", "skills", "supabase", "rls", "stripe", "webhook", "security", "nextjs"]
+}
