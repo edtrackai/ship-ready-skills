@@ -14,6 +14,8 @@ The skills use the same check ids and fix text as the free [nextjs-supabase-stri
 npx skills add edtrackai/ship-ready-skills
 # or just one skill:
 npx skills add edtrackai/ship-ready-skills --skill supabase-rls-review
+# see what's in the repo without installing:
+npx skills add edtrackai/ship-ready-skills --list
 ```
 *(Tested 14 Oct 2026 with skills 1.7.2 on Node 22, which that CLI requires: both commands installed the skills into `./.agents/skills/` in an empty folder.)*
 
@@ -32,8 +34,21 @@ mkdir -p .claude/skills
 cp -r ship-ready-skills/skills/* .claude/skills/
 ```
 
+## Skills
+
+| Skill | What it reviews | Use when |
+|---|---|---|
+| `supabase-rls-review` | `supabase/migrations/*.sql`: tables without RLS, `using (true)` write policies, anon write policies, `security definer` without `search_path` (R1–R4), public tables with no explicit `grant`, blanket grants to `anon`/`authenticated` (R5, R6) | Reviewing RLS, Supabase policies or grants, a `42501` error, or database security before launch |
+| `stripe-webhook-review` | Stripe webhook route handlers: signature verification, raw body, idempotency on `event.id` with pending/completed status, `items.data[0]` billing periods (S1–S3, S6, S7) | Reviewing a Stripe webhook, idempotency, duplicate events, or payments before launch |
+
 ## Use
 Ask Claude Code something like "review my RLS and grants" or "review my Stripe webhook". You can also call a skill by name: `/ship-ready-skills:supabase-rls-review` or `/ship-ready-skills:stripe-webhook-review` as a plugin, or `/supabase-rls-review` and `/stripe-webhook-review` when copied (following Claude Code's naming; not yet tested live).
+
+Example prompt:
+```
+Review my Supabase migrations for RLS and grants.
+```
+The skill asks for a report in this shape: one summary line (files read, findings by severity), then a table of severity, check id, file:line, what it saw and the fix, then anything it couldn't verify (for example, policies created in the dashboard).
 
 ## Limits
 - Only SQL in your migration files is reviewed. Policies or grants created in the Supabase dashboard aren't visible.
@@ -42,6 +57,8 @@ Ask Claude Code something like "review my RLS and grants" or "review my Stripe w
 *Ad (paid, from the same author):* the [AI Rules v2 pack](https://edtrackai.github.io/ai-rules?utm_source=skills&utm_medium=readme&utm_campaign=ship-ready-skills) ($19; UK buyers pay $22.80 incl. VAT) adds rules, more skills and guardrail hooks for this stack.
 
 *Claude Code, Next.js, Supabase and Stripe are trademarks of their respective owners. This project isn't affiliated with or endorsed by them.*
+
+Made by Stack & Ship: [edtrackai.github.io](https://edtrackai.github.io/?utm_source=github&utm_medium=readme&utm_campaign=ship-ready-skills)
 
 ## License
 MIT. See [LICENSE](LICENSE).

@@ -1,8 +1,7 @@
 ---
 name: supabase-rls-review
 description: Review Supabase SQL migrations for row level security gaps and missing or blanket Data API grants (tables without RLS, using (true) write policies, anon write policies, security definer functions without search_path, public tables with no explicit GRANT (Supabase's changelog schedules a grants change for 30 Oct 2026), blanket grants to anon/authenticated). Use when the user asks to review RLS, Supabase policies, grants, a 42501 error, or database security before launch.
-argument-hint: "[path-to-repo]"
-allowed-tools: Read, Grep, Glob
+allowed-tools: Read Grep Glob
 ---
 
 # supabase-rls-review

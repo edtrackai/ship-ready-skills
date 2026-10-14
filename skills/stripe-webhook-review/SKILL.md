@@ -1,8 +1,7 @@
 ---
 name: stripe-webhook-review
 description: Review Next.js Stripe webhook route handlers for missing signature verification, JSON parsed before verification, missing or non-status-aware idempotency on event.id (pending/completed), unsafe reprocessing of pending events, and billing periods read from items.data[0]. Use when the user asks to review a Stripe webhook, idempotency, duplicate events, or payments before launch.
-argument-hint: "[path-to-webhook-route]"
-allowed-tools: Read, Grep, Glob
+allowed-tools: Read Grep Glob
 ---
 
 # stripe-webhook-review
