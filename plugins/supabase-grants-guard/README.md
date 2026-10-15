@@ -1,31 +1,36 @@
-# supabase-grants-check (Claude Code plugin, free, MIT). DRAFT 0.1.5, not published
+# supabase-grants-check (Claude Code plugin, free, MIT) 0.1.6
 
 For the Supabase Data API grants change that Supabase's changelog schedules for 30 Oct 2026 (date may move; see supabase/cli PR #6337). The plugin bundles three things:
 
 - **Skill `supabase-grants-check`** (tools: Read, Grep, Glob): reviews `supabase/migrations/*.sql` and `supabase/config.toml` (G1–G8).
 - **SQL checker** `checker/supabase-grants-check.sql`: paste it into the Supabase SQL Editor and run it. It only reads catalog views and makes no changes (C1–C7).
-- **Mod** (Claude Code 2.1.287+): refuses SQL that grants `anon` more than `select`, meaning `grant all`, `insert`, `update`, `delete` or `truncate ... to anon`. It checks Bash commands, file writes and MCP tool inputs before they run. `/grants-check` shows how to run the skill and the checker.
+- **Mod** (Claude Code 2.1.287+): refuses SQL that grants `anon` more than `select`: write-level grants to `anon` or `PUBLIC`, grants that name the `CREATE` privilege to `anon`, `authenticated` or `PUBLIC`, role grants and role membership for `anon`/`authenticated`, ownership transfers to `anon`/`authenticated`/`PUBLIC`, and risky role attributes for `anon`/`authenticated` (full list under Limits). It checks Bash commands, file writes and MCP tool inputs before they run. `/grants-check` shows how to run the skill and the checker.
 
 ## Install
+From GitHub (in Claude Code):
+```
+/plugin marketplace add edtrackai/ship-ready-skills
+/plugin install supabase-grants-check@ship-ready-skills
+```
 From a local copy:
 ```bash
 claude plugin marketplace add /path/to/supabase-grants-check
 claude plugin install supabase-grants-check@supabase-grants-check
 ```
-(A GitHub install line will be added once the repo is public.)
 
 ## Tested
 - `claude plugin validate --strict`: passes.
-- `claude plugin test`: 6/6.
-- `node tests/unit.mjs`: 20/20, including 1 MB timing inputs.
-- Local marketplace add and install: works (Claude Code 2.1.300).
+- `claude plugin test`: 22/22.
+- `node tests/unit.mjs`: 166/166, including 1 MB timing inputs.
+- Local marketplace add and install, and install from the GitHub marketplace in a clean profile: work (Claude Code 2.1.300).
 - The checker has its own Postgres test suite in the source repo.
 
 Not tested: a live interactive session.
 
 ## Limits
 - Pattern-based. SQL built in variables or split across strings (for example inside a DO block) can get past the mod.
-- It blocks write-level grants (ALL, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER, EXECUTE, CREATE, MAINTAIN, TEMPORARY/TEMP) to `anon` or `PUBLIC`, `CREATE` (for example on schema public) to `authenticated` as well (`USAGE` is allowed), any `GRANT <role> TO anon/authenticated`, and statements that make anon or authenticated a member of a role (`CREATE ROLE ... [WITH] ROLE|USER|ADMIN anon`, `ALTER GROUP ... ADD USER anon`). It does not trace write grants made to a role that anon or authenticated joined earlier.
+- It blocks write-level grants (ALL, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER, EXECUTE, CREATE, MAINTAIN, TEMPORARY/TEMP) to `anon` or `PUBLIC`, grants that name the `CREATE` privilege explicitly (for example `grant create on schema public to authenticated`) to `authenticated` as well (`USAGE` is allowed; `ALL` to `authenticated` is not blocked, see below), any `GRANT <role> TO anon/authenticated`, and statements that make anon or authenticated a member of a role (`CREATE ROLE ... [WITH] ROLE|USER|ADMIN anon`, `ALTER GROUP ... ADD USER anon`). It does not trace write grants made to a role that anon or authenticated joined earlier.
+- `GRANT ALL ON SCHEMA|DATABASE|TABLESPACE … TO authenticated` is allowed even though it includes CREATE (older Supabase setups grant it), and moving objects with `ALTER … SET SCHEMA` into a schema anon already owns isn't checked.
 - It also blocks `grant execute on function ... to anon`. If you mean to expose an RPC function to signed-out users, run that grant yourself.
 - Comments are removed before matching, so a commented-out grant is ignored.
 - It also blocks ownership transfers (`ALTER TABLE|SCHEMA|FUNCTION|VIEW|SEQUENCE ... OWNER TO anon/authenticated/public`, `REASSIGN OWNED BY ... TO anon/authenticated/public`, `CREATE SCHEMA ... AUTHORIZATION anon/authenticated/public`, `CREATE DATABASE ... OWNER anon/authenticated/public`) and `ALTER ROLE|USER anon/authenticated ... BYPASSRLS|SUPERUSER|CREATEROLE|CREATEDB|REPLICATION|LOGIN`.

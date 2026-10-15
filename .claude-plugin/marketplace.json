@@ -20,7 +20,7 @@
       "name": "supabase-grants-check",
       "source": "./plugins/supabase-grants-guard",
       "description": "Skill + SQL checker + a mod that refuses GRANT ALL or write grants to anon or PUBLIC, and role grants to anon/authenticated. /grants-check shows how to run the checker.",
-      "version": "0.1.5",
+      "version": "0.1.6",
       "license": "MIT",
       "category": "security"
     }
