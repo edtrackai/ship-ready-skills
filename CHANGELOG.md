@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.5.1 (2026-10-15)
+- Docs only: `plugins/supabase-grants-guard` is now `supabase-grants-check` 0.1.6. Its README is no longer marked draft, and it has GitHub install lines, current test counts (166 unit, 22 `claude plugin test`), a block summary that matches the current block list, and narrowed limits (`GRANT ALL ON SCHEMA|DATABASE|TABLESPACE … TO authenticated` is allowed; `ALTER … SET SCHEMA` isn't checked). No code changes.
+
 ## 0.5.0 (2026-10-15)
 - New plugin `plugins/supabase-grants-guard` (`supabase-grants-check` 0.1.5, MIT), listed in `.claude-plugin/marketplace.json`. It bundles the `supabase-grants-check` skill, the SQL checker (it only reads catalog views and makes no changes) and a mod (Claude Code 2.1.287+) that refuses SQL that grants `anon` more than `select` in Bash commands, file writes and MCP tool inputs: write-level grants to `anon` or `PUBLIC`, role grants to `anon`/`authenticated`, ownership transfers and role attributes for `anon`/`authenticated`. Pattern-based; dynamic SQL can't be fully caught (limits in the plugin README).
 - Tests: `node tests/unit.mjs` 166/166 including 1 MB timing inputs; `claude plugin test` 22/22; `claude plugin validate --strict` passes. Not tested in a live interactive session.
