@@ -1,8 +1,9 @@
 # Ship-Ready Skills
 
-Three free review skills for Claude Code (their only tools are Read, Grep and Glob) and one free guardrail hook, for apps built on Next.js + Supabase + Stripe:
+Four free review skills for Claude Code (their only tools are Read, Grep and Glob) and one free guardrail hook, for apps built on Next.js + Supabase + Stripe:
 
 - **`supabase-rls-review`**: reviews `supabase/migrations/*.sql` for row level security gaps (R1–R4) and for missing or blanket Data API grants (R5, R6). Supabase's changelog schedules a change for 30 Oct 2026 after which new `public` tables on existing projects get no automatic grants to `anon`/`authenticated`/`service_role`, so a table with no explicit `grant` returns `42501` from the Data API ([Supabase changelog](https://supabase.com/changelog/45329-breaking-change-tables-not-exposed-to-data-and-graphql-api-automatically)). Existing tables keep their grants.
+- **`supabase-grants-check`** (new): the security side of the same grants change. It flags `grant all`/write grants to `anon`, grants on tables with RLS off, policies whose role has no grant (42501), grants with no policy, `security definer` functions `anon` can execute, blanket default privileges, and a local `config.toml` that still auto-exposes new tables (G1–G8). It matches the C1–C7 checks of the free SQL checker you run in the Supabase SQL Editor. For a CI linter that replays migrations to find tables the Data API can't reach, see [supabase-grants-lint](https://github.com/guptaaman678/supabase-grants-lint) (MIT, a separate project, not ours).
 - **`launch-security-check`**: a quick pre-launch pass for three critical mistakes: public tables without RLS, service-role or secret keys reaching client code (`NEXT_PUBLIC_` variables, `'use client'` files), and Stripe webhooks without `constructEvent` signature verification (L1–L3).
 - **`stripe-webhook-review`**: reviews Stripe webhook route handlers for signature verification, raw-body parsing, pending/completed idempotency on `event.id` (including when reprocessing a pending event is safe), and `items.data[0]` billing periods.
 - **`hooks/secret-egress`** (new, a Claude Code hook, not a skill): denies shell commands, URL fetches and MCP calls that would send a live Stripe/Supabase secret, a service-role key or a `.env` file off your machine. 97 tested cases; pattern-based, so rephrased commands can get past it. See [hooks/secret-egress/README.md](hooks/secret-egress/README.md).
@@ -41,6 +42,7 @@ cp -r ship-ready-skills/skills/* .claude/skills/
 | Skill | What it reviews | Use when |
 |---|---|---|
 | `supabase-rls-review` | `supabase/migrations/*.sql`: tables without RLS, `using (true)` write policies, anon write policies, `security definer` without `search_path` (R1–R4), public tables with no explicit `grant`, blanket grants to `anon`/`authenticated` (R5, R6) | Reviewing RLS, Supabase policies or grants, a `42501` error, or database security before launch |
+| `supabase-grants-check` | `supabase/migrations/*.sql` and `supabase/config.toml`: anon write grants, grants with RLS off, policy/grant mismatches, `security definer` functions anon can execute, default privileges, `auto_expose_new_tables` (G1–G8) | A `42501` error, the grants change Supabase's changelog schedules for 30 Oct (date may move), or checking whether a GRANT fix is safe |
 | `launch-security-check` | Migrations, client components and webhook routes: tables without RLS, service-role/secret keys in `NEXT_PUBLIC_` variables or `'use client'` files, webhook handlers with no `constructEvent` (L1–L3) | A quick security check before launch or go-live |
 | `stripe-webhook-review` | Stripe webhook route handlers: signature verification, raw body, idempotency on `event.id` with pending/completed status, `items.data[0]` billing periods (S1–S3, S6, S7) | Reviewing a Stripe webhook, idempotency, duplicate events, or payments before launch |
 
@@ -56,6 +58,8 @@ The skill asks for a report in this shape: one summary line (files read, finding
 ## Limits
 - Only SQL in your migration files is reviewed. Policies or grants created in the Supabase dashboard aren't visible.
 - These are review heuristics for one stack. A clean result isn't proof your app is secure.
+
+*Ad (paid, from the same author), if you're fixing grants:* [AI Rules v2](https://edtrackai.github.io/ai-rules?utm_source=skills&utm_medium=readme&utm_campaign=ship-ready-skills&utm_content=grants-check-ai-rules) ($19; UK buyers pay $22.80 incl. VAT) gives Claude Code and Cursor stack rules that steer agents to add RLS, policies and explicit grants together, and [Launch Audit](https://edtrackai.github.io/launch-audit?utm_source=skills&utm_medium=readme&utm_campaign=ship-ready-skills&utm_content=grants-check-launch-audit) ($12; UK buyers pay $14.40 incl. VAT) checks the whole app before launch.
 
 *Ad (paid, from the same author):* the [AI Rules v2 pack](https://edtrackai.github.io/ai-rules?utm_source=skills&utm_medium=readme&utm_campaign=ship-ready-skills&utm_content=ai-rules) ($19; UK buyers pay $22.80 incl. VAT) adds rules, more skills and guardrail hooks for this stack.
 
