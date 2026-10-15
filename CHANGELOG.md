@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.3.1 (staged, awaiting QA)
+- secret-egress hook: curl/wget calls to api.stripe.com or `*.supabase.co` lose the official-host exemption when the command sets a proxy or curl/wget config variable (`*PROXY*=`, `*_proxy=`, `CURL_HOME=`, `CURLRC=`, `WGETRC=`, `CURLOPT*=`, any case), a CA-trust variable (`SSL_CERT*=`, `*CA_BUNDLE*=`, `*CA_CERT*=`), any `--proxy*`/`--socks*` option, `--proxytunnel` or a short-option cluster containing `p`. README limits now name base64 and split strings. 97 test cases.
+
 ## 0.3.0 (2026-10-15)
 - New free hook `hooks/secret-egress`: pattern-based Claude Code PreToolUse hook that denies Bash, WebFetch, WebSearch and MCP calls carrying a live Stripe key, `whsec_`, `sb_secret_`, a GitHub token, an AWS access key id or a Supabase service-role JWT; a `.env` file in a network command; or a secret env variable sent to a host other than api.stripe.com / *.supabase.co. Linear-time checks; inputs over 64 K characters are denied; no official-host exemption with curl/wget redirect options. 77 test cases (`node hooks/secret-egress/tests/run.mjs`). Needs Claude Code 2.1.295+ for `onFailure: block`.
 - README: describes the skills by their tools (Read, Grep, Glob) instead of 'read-only'.

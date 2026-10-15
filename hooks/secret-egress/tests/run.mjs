@@ -105,6 +105,32 @@ egressGood.push(
   ["stripe env to api.stripe.com with JSON body file", `curl https://api.stripe.com/v1/customers -u $STRIPE_SECRET_KEY: -d @body.json`],
   ["git push", `git push origin feature/x`],
 );
+// QA round 3 (14 Oct 2026): env assignments that reroute or reconfigure curl/wget drop the official-host exemption.
+egressBad.push(
+  ["R3 HTTPS_PROXY to official host", `HTTPS_PROXY=http://127.0.0.1:8080 curl https://api.stripe.com/v1/x -u $STRIPE_SECRET_KEY:`],
+  ["R3 lowercase https_proxy", `https_proxy=http://127.0.0.1:8080 curl https://api.stripe.com/v1/x -u $STRIPE_SECRET_KEY:`],
+  ["R3 ALL_PROXY via env", `env ALL_PROXY=socks5://127.0.0.1:1080 curl https://api.stripe.com/v1/x -u $STRIPE_SECRET_KEY:`],
+  ["R3 CURL_HOME config dir", `CURL_HOME=/tmp/c curl https://api.stripe.com/v1/x -u $STRIPE_SECRET_KEY:`],
+  ["R3 CURLRC", `CURLRC=/tmp/rc curl https://abcd.supabase.co/rest/v1/x -H "apikey: $SUPABASE_SERVICE_ROLE_KEY"`],
+  ["R3 WGETRC", `WGETRC=/tmp/w wget "https://api.stripe.com/v1/x?k=$STRIPE_SECRET_KEY"`],
+  ["R3 CURLOPT_ name", `CURLOPT_PROXY=x curl https://api.stripe.com/v1/x -u $STRIPE_SECRET_KEY:`],
+  ["R3 export then curl", `export HTTPS_PROXY=http://127.0.0.1:8080; curl https://api.stripe.com/v1/x -u $STRIPE_SECRET_KEY:`],
+);
+egressGood.push(["R3 unrelated env assignment keeps exemption", `DEBUG=1 curl https://api.stripe.com/v1/customers -u $STRIPE_SECRET_KEY:`]);
+// QA round 4 (15 Oct 2026): proxy/SOCKS flags and CA-trust variables also drop the exemption.
+egressBad.push(
+  ["R4 --socks5", `curl --socks5 127.0.0.1:1080 https://api.stripe.com/v1/x -u $STRIPE_SECRET_KEY:`],
+  ["R4 --socks5-hostname=", `curl --socks5-hostname=127.0.0.1:1080 https://api.stripe.com/v1/x -u $STRIPE_SECRET_KEY:`],
+  ["R4 --socks4a", `curl --socks4a 127.0.0.1:1080 https://api.stripe.com/v1/x -u $STRIPE_SECRET_KEY:`],
+  ["R4 -p --proxytunnel", `curl -p --proxytunnel https://api.stripe.com/v1/x -u $STRIPE_SECRET_KEY:`],
+  ["R4 -sSp cluster", `curl -sSp https://api.stripe.com/v1/x -u $STRIPE_SECRET_KEY:`],
+  ["R4 --proxy-header", `curl --proxy-header "X: y" https://api.stripe.com/v1/x -u $STRIPE_SECRET_KEY:`],
+  ["R4 --proxy=", `curl --proxy=http://127.0.0.1:8080 https://api.stripe.com/v1/x -u $STRIPE_SECRET_KEY:`],
+  ["R4 SSL_CERT_FILE", `SSL_CERT_FILE=/tmp/ca.pem curl https://api.stripe.com/v1/x -u $STRIPE_SECRET_KEY:`],
+  ["R4 CURL_CA_BUNDLE", `CURL_CA_BUNDLE=/tmp/ca.pem curl https://api.stripe.com/v1/x -u $STRIPE_SECRET_KEY:`],
+  ["R4 NODE_EXTRA_CA_CERTS", `NODE_EXTRA_CA_CERTS=/tmp/ca.pem curl https://abcd.supabase.co/rest/v1/x -H "apikey: $SUPABASE_SERVICE_ROLE_KEY"`],
+);
+egressGood.push(["R4 curl -sS to official host keeps exemption", `curl -sS https://api.stripe.com/v1/customers -u $STRIPE_SECRET_KEY:`]);
 const egressHook = join(ROOT, "secret-egress.mjs");
 for (const [n, c] of egressBad) rec("E-claude-bash", `blocks: ${n}`, claudeDenied(runHook(egressHook, { tool_name: "Bash", tool_input: { command: c } })));
 for (const [n, c] of [...egressGood, ...egressOnlyGood]) rec("E-claude-bash", `allows: ${n}`, !claudeDenied(runHook(egressHook, { tool_name: "Bash", tool_input: { command: c } })));

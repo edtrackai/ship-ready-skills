@@ -56,12 +56,29 @@ function isOfficialHost(host) {
 // curl/wget options that can send the request somewhere other than the visible URL, or load hidden options.
 const REDIRECT_OPTS = new Set(["--config", "--resolve", "--connect-to", "--doh-url", "--unix-socket", "--abstract-unix-socket", "--proxy", "-x", "--preproxy", "-e", "--execute", "--input-file", "-i"]);
 function hasRedirectOption(tokens) {
-  return tokens.some((t) => REDIRECT_OPTS.has(t) || (t.startsWith("-") && !t.startsWith("--") && (t.includes("K") || t.includes("x"))));
+  // Any --proxy* / --socks* option (with or without =value), --proxytunnel, and short clusters with K, x or p (-p = --proxytunnel).
+  return tokens.some((t) => REDIRECT_OPTS.has(t) || t.startsWith("--proxy") || t.startsWith("--socks") || t.startsWith("--preproxy")
+    || (t.startsWith("-") && !t.startsWith("--") && (t.includes("K") || t.includes("x") || t.includes("p"))));
+}
+
+// Environment assignments that can reroute or reconfigure curl/wget: *PROXY*=, *_proxy=, CURL_HOME=, CURLRC=,
+// WGETRC=, CURLOPT*=, and CA-trust variables (SSL_CERT_FILE, SSL_CERT_DIR, CURL_CA_BUNDLE, REQUESTS_CA_BUNDLE,
+// NODE_EXTRA_CA_CERTS, any *CA_BUNDLE* / *CA_CERT*) (case-insensitive). Linear: split at the first "=", check the name.
+const ENV_REROUTE = /PROXY|CURL_HOME|CURLRC|WGETRC|CURLOPT|SSL_CERT|CA_BUNDLE|CA_CERT/i;
+export function hasRerouteAssignment(cmd) {
+  for (const t of cmd.split(/[\s;&|()`'"]+/)) {
+    const eq = t.indexOf("=");
+    if (eq <= 0) continue;
+    const name = t.slice(0, eq);
+    if (/^[A-Za-z_]+$/.test(name) && ENV_REROUTE.test(name)) return true;
+  }
+  return false;
 }
 
 function allTargetsOfficial(cmd, tokens) {
   if (cmd.includes("#")) return false;
   if (hasRedirectOption(tokens)) return false;
+  if (hasRerouteAssignment(cmd)) return false;
   const urls = cmd.match(/https?:\/\/[^\s'"`<>|;&)]+/g) ?? [];
   if (!urls.length) return false;
   for (const u of urls) { let host; try { host = new URL(u).host; } catch { return false; } if (!isOfficialHost(host)) return false; }
