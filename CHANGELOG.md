@@ -1,9 +1,9 @@
 # Changelog
 
-## 0.4.0 (staged, awaiting QA, Legal and Brand)
+## 0.4.0 (2026-10-15)
 - New skill `supabase-grants-check` (Read, Grep, Glob): G1–G8 for the security side of the Data API grants change Supabase's changelog schedules for 30 Oct 2026, matching the free SQL checker's C1–C7.
 
-## 0.3.1 (staged, awaiting QA)
+## 0.3.1 (2026-10-15)
 - secret-egress hook: curl/wget calls to api.stripe.com or `*.supabase.co` lose the official-host exemption when the command sets a proxy or curl/wget config variable (`*PROXY*=`, `*_proxy=`, `CURL_HOME=`, `CURLRC=`, `WGETRC=`, `CURLOPT*=`, any case), a CA-trust variable (`SSL_CERT*=`, `*CA_BUNDLE*=`, `*CA_CERT*=`), any `--proxy*`/`--socks*` option, `--proxytunnel` or a short-option cluster containing `p`. README limits now name base64 and split strings. 97 test cases.
 
 ## 0.3.0 (2026-10-15)
