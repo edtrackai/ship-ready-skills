@@ -1,10 +1,11 @@
 # Ship-Ready Skills
 
-Three free, read-only review skills for Claude Code, for apps built on Next.js + Supabase + Stripe:
+Three free review skills for Claude Code (their only tools are Read, Grep and Glob) and one free guardrail hook, for apps built on Next.js + Supabase + Stripe:
 
 - **`supabase-rls-review`**: reviews `supabase/migrations/*.sql` for row level security gaps (R1–R4) and for missing or blanket Data API grants (R5, R6). Supabase's changelog schedules a change for 30 Oct 2026 after which new `public` tables on existing projects get no automatic grants to `anon`/`authenticated`/`service_role`, so a table with no explicit `grant` returns `42501` from the Data API ([Supabase changelog](https://supabase.com/changelog/45329-breaking-change-tables-not-exposed-to-data-and-graphql-api-automatically)). Existing tables keep their grants.
 - **`launch-security-check`**: a quick pre-launch pass for three critical mistakes: public tables without RLS, service-role or secret keys reaching client code (`NEXT_PUBLIC_` variables, `'use client'` files), and Stripe webhooks without `constructEvent` signature verification (L1–L3).
 - **`stripe-webhook-review`**: reviews Stripe webhook route handlers for signature verification, raw-body parsing, pending/completed idempotency on `event.id` (including when reprocessing a pending event is safe), and `items.data[0]` billing periods.
+- **`hooks/secret-egress`** (new, a Claude Code hook, not a skill): denies shell commands, URL fetches and MCP calls that would send a live Stripe/Supabase secret, a service-role key or a `.env` file off your machine. 77 tested cases; pattern-based, so rephrased commands can get past it. See [hooks/secret-egress/README.md](hooks/secret-egress/README.md).
 
 The skills use the same check ids and fix text as the free [nextjs-supabase-stripe-security-checker](https://github.com/edtrackai/nextjs-supabase-stripe-security-checker) CLI (R1–R6, S1–S3, S6, S7); `launch-security-check` uses its own ids (L1–L3). Results can differ, because the skills are an AI-guided review, not the CLI's code. The skills are instructions only: no scripts, and the skills make no network calls (Claude Code itself may), and their `allowed-tools` are `Read`, `Grep` and `Glob`. Findings are prompts to review, not proof of a vulnerability.
 

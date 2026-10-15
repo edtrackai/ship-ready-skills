@@ -7,7 +7,7 @@
       "name": "ship-ready-skills",
       "source": "./",
       "description": "supabase-rls-review + stripe-webhook-review + launch-security-check: read-only review skills for Supabase migrations, client code and Stripe webhook handlers.",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "license": "MIT",
       "category": "security"
     }
