@@ -1,0 +1,4 @@
+{
+  "description": "Refuse GRANT ALL / write grants to anon or PUBLIC, and role grants to anon/authenticated, in SQL Claude is about to run or write; /grants-check",
+  "modules": ["./register.mjs"]
+}

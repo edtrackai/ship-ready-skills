@@ -1,13 +1,26 @@
 {
   "name": "ship-ready-skills",
-  "owner": { "name": "Stack & Ship", "url": "https://edtrackai.github.io" },
-  "metadata": { "description": "Free Claude Code review skills for Next.js + Supabase + Stripe." },
+  "owner": {
+    "name": "Stack & Ship",
+    "url": "https://edtrackai.github.io"
+  },
+  "metadata": {
+    "description": "Free Claude Code review skills and a Supabase grants guard plugin for Next.js + Supabase + Stripe."
+  },
   "plugins": [
     {
       "name": "ship-ready-skills",
       "source": "./",
       "description": "Four review skills (tools: Read, Grep, Glob): supabase-rls-review, supabase-grants-check, stripe-webhook-review and launch-security-check, for Supabase migrations and grants, client code and Stripe webhook handlers.",
-      "version": "0.4.0",
+      "version": "0.5.0",
+      "license": "MIT",
+      "category": "security"
+    },
+    {
+      "name": "supabase-grants-check",
+      "source": "./plugins/supabase-grants-guard",
+      "description": "Skill + SQL checker + a mod that refuses GRANT ALL or write grants to anon or PUBLIC, and role grants to anon/authenticated. /grants-check shows how to run the checker.",
+      "version": "0.1.5",
       "license": "MIT",
       "category": "security"
     }

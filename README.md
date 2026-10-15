@@ -6,6 +6,7 @@ Four free review skills for Claude Code (their only tools are Read, Grep and Glo
 - **`supabase-grants-check`** (new): the security side of the same grants change. It flags `grant all`/write grants to `anon`, grants on tables with RLS off, policies whose role has no grant (42501), grants with no policy, `security definer` functions `anon` can execute, blanket default privileges, and a local `config.toml` that still auto-exposes new tables (G1–G8). It matches the C1–C7 checks of the free SQL checker you run in the Supabase SQL Editor. For a CI linter that replays migrations to find tables the Data API can't reach, see [supabase-grants-lint](https://github.com/guptaaman678/supabase-grants-lint) (MIT, a separate project, not ours).
 - **`launch-security-check`**: a quick pre-launch pass for three critical mistakes: public tables without RLS, service-role or secret keys reaching client code (`NEXT_PUBLIC_` variables, `'use client'` files), and Stripe webhooks without `constructEvent` signature verification (L1–L3).
 - **`stripe-webhook-review`**: reviews Stripe webhook route handlers for signature verification, raw-body parsing, pending/completed idempotency on `event.id` (including when reprocessing a pending event is safe), and `items.data[0]` billing periods.
+- **`plugins/supabase-grants-guard`** (new, a separate Claude Code plugin, `supabase-grants-check` 0.1.5): bundles the `supabase-grants-check` skill, the SQL checker `checker/supabase-grants-check.sql` (it only reads catalog views and makes no changes) and a mod (Claude Code 2.1.287+) that refuses SQL granting `anon` more than `select` before Claude runs it. It checks Bash commands, file writes and MCP tool inputs. Pattern-based; see the limits in [its README](plugins/supabase-grants-guard/README.md).
 - **`hooks/secret-egress`** (new, a Claude Code hook, not a skill): denies shell commands, URL fetches and MCP calls that would send a live Stripe/Supabase secret, a service-role key or a `.env` file off your machine. 97 tested cases; pattern-based, so rephrased commands can get past it. See [hooks/secret-egress/README.md](hooks/secret-egress/README.md).
 
 The skills use the same check ids and fix text as the free [nextjs-supabase-stripe-security-checker](https://github.com/edtrackai/nextjs-supabase-stripe-security-checker) CLI (R1–R6, S1–S3, S6, S7); `launch-security-check` uses its own ids (L1–L3). Results can differ, because the skills are an AI-guided review, not the CLI's code. The skills are instructions only: no scripts, and the skills make no network calls (Claude Code itself may), and their `allowed-tools` are `Read`, `Grep` and `Glob`. Findings are prompts to review, not proof of a vulnerability.
@@ -29,6 +30,13 @@ npx skills add edtrackai/ship-ready-skills --list
 /plugin marketplace add edtrackai/ship-ready-skills
 /plugin install ship-ready-skills@ship-ready-skills
 ```
+
+**Supabase grants guard plugin** (same marketplace):
+```
+/plugin marketplace add edtrackai/ship-ready-skills
+/plugin install supabase-grants-check@ship-ready-skills
+```
+*(Install from GitHub tested 15 Oct 2026 with Claude Code 2.1.300 in a clean profile. It includes the same `supabase-grants-check` skill as `ship-ready-skills`, so you only need one of the two for that skill.)*
 
 **Or copy the skills** into your project (or `~/.claude/skills/` for every project):
 ```bash

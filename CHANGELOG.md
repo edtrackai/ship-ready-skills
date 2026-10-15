@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.0 (2026-10-15)
+- New plugin `plugins/supabase-grants-guard` (`supabase-grants-check` 0.1.5, MIT), listed in `.claude-plugin/marketplace.json`. It bundles the `supabase-grants-check` skill, the SQL checker (it only reads catalog views and makes no changes) and a mod (Claude Code 2.1.287+) that refuses SQL that grants `anon` more than `select` in Bash commands, file writes and MCP tool inputs: write-level grants to `anon` or `PUBLIC`, role grants to `anon`/`authenticated`, ownership transfers and role attributes for `anon`/`authenticated`. Pattern-based; dynamic SQL can't be fully caught (limits in the plugin README).
+- Tests: `node tests/unit.mjs` 166/166 including 1 MB timing inputs; `claude plugin test` 22/22; `claude plugin validate --strict` passes. Not tested in a live interactive session.
+
 ## 0.4.0 (2026-10-15)
 - New skill `supabase-grants-check` (Read, Grep, Glob): G1–G8 for the security side of the Data API grants change Supabase's changelog schedules for 30 Oct 2026, matching the free SQL checker's C1–C7.
 
