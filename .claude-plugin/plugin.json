@@ -1,6 +1,6 @@
 {
   "name": "ship-ready-skills",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Free review skills for Next.js + Supabase + Stripe: supabase-rls-review (RLS and Data API grants), stripe-webhook-review (signature, raw body, pending/completed idempotency), launch-security-check (RLS off, keys in client code, unverified webhooks), supabase-grants-check (unsafe or mismatched Data API grants) and unthrottled-route-check (AI or Stripe Checkout routes with no rate limiter).",
   "author": {
     "name": "Stack & Ship",

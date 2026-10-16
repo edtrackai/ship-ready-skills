@@ -75,6 +75,8 @@ The skill asks for a report in this shape: one summary line (files read, finding
 
 *Ad (paid, from the same author):* [Launch Audit](https://edtrackai.github.io/launch-audit?utm_source=skills&utm_medium=readme&utm_campaign=ship-ready-skills&utm_content=launch-audit) ($12; UK buyers pay $14.40 incl. VAT) runs 28 automated checks plus an auditor agent with no Edit or Write tools, and gives a ready / not-ready report with a fix plan.
 
+Ad (our own paid product): Spend Caps Kit, $19 (plus VAT where applicable): https://luxurydrive0.gumroad.com/l/ezfyei?utm_source=skills&utm_medium=readme&utm_campaign=ship-ready-skills&utm_content=spend-caps-kit
+
 *Claude Code, Next.js, Supabase and Stripe are trademarks of their respective owners. This project isn't affiliated with or endorsed by them.*
 
 Made by Stack & Ship: [edtrackai.github.io](https://edtrackai.github.io/?utm_source=github&utm_medium=readme&utm_campaign=ship-ready-skills)
