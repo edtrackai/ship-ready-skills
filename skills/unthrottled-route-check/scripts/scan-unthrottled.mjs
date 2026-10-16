@@ -11,18 +11,23 @@ const MAX_BYTES = 512 * 1024;
 const CODE_EXT = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"]);
 const SKIP_DIRS = new Set(["node_modules", ".next", ".git", "dist", "build", "out", ".vercel", "coverage"]);
 
+// Matched by method shape, whatever the client variable is called.
 export const SINKS = [
-  { id: "ai", label: "AI API call", severity: "high", re: /\b(?:openai|client|ai)\s*\.\s*(?:chat\s*\.\s*completions|responses|completions|images|embeddings|audio\s*\.\s*\w+)\s*\.\s*(?:create|generate|stream)\s*\(/ },
-  { id: "ai", label: "AI API call", severity: "high", re: /\b(?:anthropic|client|claude)\s*\.\s*messages\s*\.\s*(?:create|stream)\s*\(/ },
+  { id: "ai", label: "AI API call", severity: "high", re: /\.\s*chat\s*\.\s*completions\s*\.\s*(?:create|stream|parse)\s*\(/ },
+  { id: "ai", label: "AI API call", severity: "high", re: /\.\s*responses\s*\.\s*(?:create|stream|parse)\s*\(/ },
+  { id: "ai", label: "AI API call", severity: "high", re: /\.\s*messages\s*\.\s*(?:create|stream)\s*\(/ },
+  { id: "ai", label: "AI API call", severity: "high", re: /\.\s*(?:images\s*\.\s*generate|embeddings\s*\.\s*create|completions\s*\.\s*create)\s*\(/ },
   { id: "ai", label: "AI SDK call", severity: "high", re: /\b(?:streamText|generateText|generateObject|streamObject)\s*\(/ },
+  { id: "ai", label: "AI API call (fetch)", severity: "high", re: /["'`]https:\/\/api\.(?:openai|anthropic)\.com\// },
   { id: "checkout", label: "Stripe Checkout Session created", severity: "medium", re: /\.\s*checkout\s*\.\s*sessions\s*\.\s*create\s*\(/ },
 ];
 
-export const LIMITER_SIGNALS = [
-  /from\s+["']@upstash\/ratelimit["']/, /from\s+["']@arcjet\/[\w-]+["']/, /from\s+["']rate-limiter-flexible["']/,
-  /from\s+["']express-rate-limit["']/, /from\s+["']@unkey\/ratelimit["']/, /from\s+["']limiter["']/,
-  /\b(?:ratelimit|rateLimit|rate_limit|RateLimiter|limiter|throttle)\b/i,
-];
+// A route counts as limited only on a limiter import or an actual limit call.
+export const LIMITER_IMPORT = /(?:from\s*|require\s*\(\s*|import\s*\(\s*)["'](?:@upstash\/ratelimit|@arcjet\/[\w-]+|rate-limiter-flexible|express-rate-limit|@unkey\/ratelimit|limiter|[^"']*rate-?limit[^"']*)["']/i;
+// `.limit(` on a receiver whose name says limiter (supabase `.limit(10)` on a query doesn't count),
+// or a call to a rate-limit function.
+export const LIMITER_CALL = /\b\w*(?:limit|Limit|LIMIT|rl|RL|throttle|Throttle)\w*\s*\.\s*limit\s*\(|\b(?:rateLimit|ratelimit|checkRateLimit|applyRateLimit|throttle)\s*\(|\.\s*protect\s*\(/;
+export const hasLimiter = (src) => LIMITER_IMPORT.test(src) || LIMITER_CALL.test(src);
 
 export function stripComments(src) {
   return src
@@ -64,17 +69,19 @@ function resolveImport(root, fromFile, spec) {
   return null;
 }
 
-const IMPORT_RE = /(?:import|export)\s[^"'`;]*?from\s*["']([^"']+)["']|import\s*\(\s*["']([^"']+)["']\s*\)|require\s*\(\s*["']([^"']+)["']\s*\)/g;
+const IMPORT_RE = /(?:import|export)\s[^"'`;]{0,400}?from\s*["']([^"']+)["']|import\s*\(\s*["']([^"']+)["']\s*\)|require\s*\(\s*["']([^"']+)["']\s*\)/g;
 
 function lineOf(src, idx) { let n = 1; for (let i = 0; i < idx; i++) if (src.charCodeAt(i) === 10) n++; return n; }
-const hasLimiter = (src) => LIMITER_SIGNALS.some((re) => re.test(src));
 
 export function scan(root) {
   root = resolve(root);
   const findings = [];
   const mwFile = ["middleware", "proxy"].flatMap((n) => [...CODE_EXT].flatMap((x) => [join(root, n + x), join(root, "src", n + x)])).find(existsSync);
   const mwSrc = mwFile ? read(mwFile) : null;
-  const mwLimiter = Boolean(mwSrc && hasLimiter(mwSrc));
+  // Downgrade only if the middleware has a limiter and its matcher (if any) can cover /api.
+  const matcher = mwSrc ? /matcher\s*:\s*(\[[^\]]{0,2000}\]|["'`][^"'`]{0,500}["'`])/.exec(mwSrc) : null;
+  const matcherCoversApi = !matcher || /api|\(\.\*\)|["'`]\/:path\*|["'`]\/\(\(\?!/.test(matcher[1]);
+  const mwLimiter = Boolean(mwSrc && hasLimiter(mwSrc) && matcherCoversApi);
   const files = walk(root).filter((f) => isRouteFile(relative(root, f)));
   for (const file of files) {
     const src = read(file);

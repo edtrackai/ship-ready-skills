@@ -1,0 +1,2 @@
+import { Ratelimit } from "@upstash/ratelimit";
+export const config = { matcher: ["/dashboard/:path*"] };

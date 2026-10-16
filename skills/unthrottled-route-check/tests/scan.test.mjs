@@ -70,3 +70,45 @@ test("comment stripping and scan stay fast on 512 KB pathological input", () => 
   for (let i = 0; i < 3; i++) stripComments("/*" + "*/*".repeat(150_000));
   assert.ok(Date.now() - t < 1000, `took ${Date.now() - t} ms`);
 });
+
+test("MEDIUM-R1: AI calls found by method whatever the client is called; raw fetch too", () => {
+  const r = scan(fx("evasion"));
+  assert.equal(r.scannedRoutes, 5);
+  assert.deepEqual(r.findings.map(key).sort(), [
+    "U1-unthrottled-ai-route app/api/client2/route.ts:4 high",
+    "U1-unthrottled-ai-route app/api/fakelimit/route.ts:7 high",
+    "U1-unthrottled-ai-route app/api/llm/route.ts:3 high",
+    "U1-unthrottled-ai-route app/api/rawfetch/route.ts:2 high",
+    "U2-unthrottled-checkout-route app/api/words/route.ts:4 medium",
+  ]);
+});
+
+test("LOW-R2: a query .limit(10) or the bare word limiter/throttle doesn't count as a limiter", () => {
+  const files = scan(fx("evasion")).findings.map((f) => f.file);
+  assert.ok(files.includes("app/api/fakelimit/route.ts"));
+  assert.ok(files.includes("app/api/words/route.ts"));
+});
+
+test("limiter detection: imports and calls", async () => {
+  const { hasLimiter } = await import("../scripts/scan-unthrottled.mjs");
+  for (const src of ['import { Ratelimit } from "@upstash/ratelimit"', 'import { enforce } from "@/lib/ratelimit"', "await ratelimit.limit(id)", "await aiLimiter.limit(id)", "await rl.limit(ip)", "await rateLimit(req)", "await aj.protect(req)"]) assert.ok(hasLimiter(src), src);
+  for (const src of ['db.from("x").select().limit(10)', 'const limiter = "x"', "// ratelimit later", "throttleMs = 5"]) assert.ok(!hasLimiter(src), src);
+});
+
+test("middleware limiter whose matcher excludes /api does not downgrade", () => {
+  const r = scan(fx("mwpages"));
+  assert.equal(r.middlewareLimiter, false);
+  assert.deepEqual(r.findings.map((f) => f.severity), ["high"]);
+});
+
+test("LOW-R1: import regex stays fast on a 500 KB route of 'import a '", async () => {
+  const { mkdtempSync, mkdirSync, writeFileSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const { tmpdir } = await import("node:os");
+  const d = mkdtempSync(join(tmpdir(), "urc-"));
+  mkdirSync(join(d, "app/api/x"), { recursive: true });
+  writeFileSync(join(d, "app/api/x/route.ts"), "import a ".repeat(55_000));
+  const t = Date.now();
+  scan(d);
+  assert.ok(Date.now() - t < 2000, `took ${Date.now() - t} ms`);
+});

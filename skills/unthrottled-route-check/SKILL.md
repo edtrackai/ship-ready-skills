@@ -12,14 +12,16 @@ Review only. Don't edit files unless the user asks for the fixes afterwards.
 Route handlers: `app/**/route.{ts,js}`, `src/app/**/route.{ts,js}`, `pages/api/**`, `src/pages/api/**`. Also read `middleware.ts` or `proxy.ts` at the project root (or in `src/`).
 
 ## Find the sinks
-Grep the route files for:
-- AI calls: `chat.completions.create`, `responses.create`, `images.generate`, `embeddings.create`, `messages.create`, `messages.stream`, `streamText(`, `generateText(`, `generateObject(`, `streamObject(`
-- Checkout: `checkout.sessions.create`
+Grep the route files for these method calls, whatever the client variable is called (`openai.`, `llm.`, `client.`...):
+- AI calls: `.chat.completions.create`/`.stream`/`.parse`, `.responses.create`/`.stream`/`.parse`, `.messages.create`, `.messages.stream`, `.images.generate`, `.embeddings.create`, `.completions.create`, `streamText(`, `generateText(`, `generateObject(`, `streamObject(`, and `fetch` to `https://api.openai.com/` or `https://api.anthropic.com/`
+- Checkout: `.checkout.sessions.create`
+
+`.messages.create` is also used by non-AI SDKs (for example SMS clients); drop those findings after reading the file.
 
 For routes with no match, check their local imports (`./`, `../`, `@/`) one level deep: a helper such as `lib/ai.ts` may make the call.
 
 ## Look for a limiter
-A route counts as limited when it (or the helper it imports) uses one of: `@upstash/ratelimit`, `@arcjet/*`, `rate-limiter-flexible`, `@unkey/ratelimit`, or calls a local limiter (`limiter.limit(`, `ratelimit`, `rateLimit(`) before the sink runs. Ignore mentions in comments.
+A route counts as limited only when it (or the helper it imports) has a limiter import (`@upstash/ratelimit`, `@arcjet/*`, `rate-limiter-flexible`, `express-rate-limit`, `@unkey/ratelimit`, or a local module whose path contains `ratelimit`/`rate-limit`) or an actual limit call (`ratelimit.limit(`, `aiLimiter.limit(`, `rl.limit(`, `rateLimit(`, Arcjet `.protect(`), and the call runs before the sink. A database query's `.limit(10)`, a variable named `limiter`, or a mention in a comment or string doesn't count.
 
 If `middleware.ts`/`proxy.ts` has a limiter, check that its `matcher` covers the route and whether it keys on the user id or only the IP. IP-only limits let one signed-in user with several IPs (or a shared office IP) through or block wrongly.
 
@@ -35,4 +37,4 @@ For each finding give file:line, id, severity and fix.
 End with: routes checked, findings by severity, and anything you couldn't confirm (dynamic imports, wrappers more than one import deep).
 
 ## Optional script
-`scripts/scan-unthrottled.mjs` in this skill's folder runs the same check with Node 20+ and no dependencies. It is not run by this skill. To run it yourself: `node scripts/scan-unthrottled.mjs <project-dir>` (add `--json` or `--exit-zero`). It exits 1 when it finds a high or medium issue, so it can run in CI. It's a text scan: treat a clean result as "nothing found", not as proof the app is protected.
+`scripts/scan-unthrottled.mjs` in this skill's folder automates the sink and limiter matching above with Node 20+ and no dependencies. It doesn't check whether the limit call comes before the sink, follows imports one level deep only (no `#` aliases), and doesn't see destructured clients (`const { messages } = client`). It is not run by this skill. To run it yourself: `node scripts/scan-unthrottled.mjs <project-dir>` (add `--json` or `--exit-zero`). It exits 1 when it finds a high or medium issue, so it can run in CI. It's a text scan: treat a clean result as "nothing found", not as proof the app is protected.
