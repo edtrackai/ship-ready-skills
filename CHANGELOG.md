@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.0 (2026-10-17)
+- New skill `unthrottled-route-check` (Read, Grep, Glob): flags Next.js API routes that call OpenAI, Anthropic or the Vercel AI SDK (U1, high) or create a Stripe Checkout Session (U2, medium) with no rate limiter in the route, in a local helper it imports, or in `middleware.ts`/`proxy.ts` (then low).
+- Its folder includes an optional zero-dependency Node 20+ script, `scripts/scan-unthrottled.mjs` (text or `--json` output; exit 1 on high/medium for CI, `--exit-zero` to report only), and 8 tests over 3 fixture apps (`node --test tests/` in the skill folder). The skill doesn't run the script. Static text scan: limits in the skill's SKILL.md.
+- README: skill count, list and table updated; the "instructions only: no scripts" line now describes the optional script.
+
 ## 0.5.1 (2026-10-15)
 - Docs only: `plugins/supabase-grants-guard` is now `supabase-grants-check` 0.1.6. Its README is no longer marked draft, and it has GitHub install lines, current test counts (166 unit, 22 `claude plugin test`), a block summary that matches the current block list, and narrowed limits (`GRANT ALL ON SCHEMA|DATABASE|TABLESPACE … TO authenticated` is allowed; `ALTER … SET SCHEMA` isn't checked). No code changes.
 
