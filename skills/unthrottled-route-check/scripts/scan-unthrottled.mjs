@@ -18,16 +18,90 @@ export const SINKS = [
   { id: "ai", label: "AI API call", severity: "high", re: /\.\s*messages\s*\.\s*(?:create|stream)\s*\(/ },
   { id: "ai", label: "AI API call", severity: "high", re: /\.\s*(?:images\s*\.\s*generate|embeddings\s*\.\s*create|completions\s*\.\s*create)\s*\(/ },
   { id: "ai", label: "AI SDK call", severity: "high", re: /\b(?:streamText|generateText|generateObject|streamObject)\s*\(/ },
-  { id: "ai", label: "AI API call (fetch)", severity: "high", re: /["'`]https:\/\/api\.(?:openai|anthropic)\.com\// },
   { id: "checkout", label: "Stripe Checkout Session created", severity: "medium", re: /\.\s*checkout\s*\.\s*sessions\s*\.\s*create\s*\(/ },
 ];
 
-// A route counts as limited only on a limiter import or an actual limit call.
-export const LIMITER_IMPORT = /(?:from\s*|require\s*\(\s*|import\s*\(\s*)["'](?:@upstash\/ratelimit|@arcjet\/[\w-]+|rate-limiter-flexible|express-rate-limit|@unkey\/ratelimit|limiter|[^"']*rate-?limit[^"']*)["']/i;
-// `.limit(` on a receiver whose name says limiter (supabase `.limit(10)` on a query doesn't count),
-// or a call to a rate-limit function.
-export const LIMITER_CALL = /\b\w*(?:limit|Limit|LIMIT|rl|RL|throttle|Throttle)\w*\s*\.\s*limit\s*\(|\b(?:rateLimit|ratelimit|checkRateLimit|applyRateLimit|throttle)\s*\(|\.\s*protect\s*\(/;
-export const hasLimiter = (src) => LIMITER_IMPORT.test(src) || LIMITER_CALL.test(src);
+export const FETCH_SINK = { id: "ai", label: "AI API call (fetch)", severity: "high", re: null };
+
+// A route counts as limited only when it imports a real limiter AND uses it:
+// - known packages, or a local module whose file name is ratelimit / rate-limit /
+//   rate-limiter / limiter (not any path that merely contains "ratelimit");
+// - then calls an imported binding (`enforce(...)`, `rateLimit(req)`, `x.limit(`/`x.protect(`)
+//   or builds a value from one (`const rl = new Ratelimit(...)`, `const aj = arcjet(...)`)
+//   and uses that value again (`rl.limit(id)`, `aj.protect(req)`, or passes it on).
+export const LIMITER_PACKAGES = /^(?:@upstash\/ratelimit|@arcjet\/[\w-]+|arcjet|rate-limiter-flexible|express-rate-limit|@unkey\/ratelimit|limiter)$/;
+export const LOCAL_LIMITER_MODULE = /^(?:\.{1,2}\/|[@~#]\/)(?:[^"']*\/)?(?:ratelimit|rate-limit|rate-limiter|ratelimiter|limiter)(?:\.[cm]?[jt]sx?)?$/i;
+const IMPORT_STMT = /import\s+(?:type\s+)?([\w$\s{},*]{1,400}?)\s+from\s*["']([^"']{1,300})["']|(?:const|let|var)\s+([\w$\s{},:]{1,400}?)\s*=\s*require\s*\(\s*["']([^"']{1,300})["']\s*\)/g;
+const esc = (x) => x.replace(/[$]/g, "\\$");
+
+export function isLimiterModule(spec) { return LIMITER_PACKAGES.test(spec) || LOCAL_LIMITER_MODULE.test(spec); }
+
+export function limiterBindings(src) {
+  const names = new Set();
+  for (const m of src.matchAll(IMPORT_STMT)) {
+    const clause = m[1] ?? m[3], spec = m[2] ?? m[4];
+    if (!isLimiterModule(spec) || /^\s*type\s/.test(m[0].slice(6))) continue;
+    for (const part of clause.replace(/[{}]/g, ",").split(",")) {
+      const t = part.trim().replace(/^type\s+/, "");
+      if (!t) continue;
+      const n = (t.match(/(?:\bas|:)\s*([\w$]+)$/) || t.match(/^\*\s+as\s+([\w$]+)$/) || t.match(/^([\w$]+)$/) || [])[1];
+      if (n) names.add(n);
+    }
+  }
+  return names;
+}
+
+export function hasLimiter(src) {
+  const imported = limiterBindings(src);
+  if (!imported.size) return false;
+  // values built from imported bindings, two passes for chains
+  const derived = new Set();
+  for (let pass = 0; pass < 2; pass++) {
+    for (const m of src.matchAll(/(?:const|let|var)\s+([\w$]+)\s*=\s*(?:await\s+)?(?:new\s+)?([\w$]+)\b/g)) {
+      if (imported.has(m[2]) || derived.has(m[2])) derived.add(m[1]);
+    }
+  }
+  for (const n of imported) {
+    if (derived.has(n)) continue;
+    const call = new RegExp(`(?<![\\w$.]|new\\s|=\\s{0,5})${esc(n)}\\s*(?:\\.\\s*(?:limit|protect)\\s*)?\\(`);
+    if (call.test(src)) return true;
+  }
+  for (const v of derived) {
+    const decl = new RegExp(`(?:const|let|var)\\s+${esc(v)}\\s*=`, "g");
+    const uses = (src.match(new RegExp(`(?<![\\w$.])${esc(v)}(?![\\w$])`, "g")) || []).length;
+    const decls = (src.match(decl) || []).length;
+    if (uses > decls) return true;
+  }
+  return false;
+}
+
+/** Does a middleware matcher (array or string source) cover /api? Negative lookaheads that name api exclude it. */
+export function matcherCoversApi(text) {
+  if (text == null) return true;
+  if (/\(\?![^)]{0,300}\bapi\b/.test(text)) return false;
+  return /\bapi\b|\.\*\)|["'`]\/:path\*/.test(text);
+}
+
+const AI_HOST = String.raw`https:\/\/api\.(?:openai|anthropic)\.com(?=[\/"'\x60$]|$)`;
+const AI_URL_LITERAL = new RegExp(String.raw`["'\x60]` + AI_HOST);
+const AI_BASE_CONST = new RegExp(String.raw`(?:const|let|var)\s+([\w$]+)\s*=\s*["'\x60]` + AI_HOST, "g");
+
+/** First AI fetch: a literal URL, or fetch(BASE...) / fetch(`${BASE}...`) where BASE is a const AI host URL. */
+export function findAiFetch(src) {
+  let best = -1;
+  for (const m of src.matchAll(new RegExp(AI_URL_LITERAL.source, "g"))) {
+    // a const base URL declaration is not a call by itself; its uses are found below
+    if (/(?:const|let|var)\s+[\w$]+\s*=\s*$/.test(src.slice(Math.max(0, m.index - 120), m.index))) continue;
+    best = m.index;
+    break;
+  }
+  for (const m of src.matchAll(AI_BASE_CONST)) {
+    const n = esc(m[1]);
+    const use = new RegExp(String.raw`\bfetch\s*\(\s*(?:${n}\b|\x60\$\{\s*${n}\s*\}|new\s+URL\s*\([^)]{0,200}\b${n}\b)`).exec(src);
+    if (use && (best < 0 || use.index < best)) best = use.index;
+  }
+  return best;
+}
 
 export function stripComments(src) {
   return src
@@ -80,8 +154,7 @@ export function scan(root) {
   const mwSrc = mwFile ? read(mwFile) : null;
   // Downgrade only if the middleware has a limiter and its matcher (if any) can cover /api.
   const matcher = mwSrc ? /matcher\s*:\s*(\[[^\]]{0,2000}\]|["'`][^"'`]{0,500}["'`])/.exec(mwSrc) : null;
-  const matcherCoversApi = !matcher || /api|\(\.\*\)|["'`]\/:path\*|["'`]\/\(\(\?!/.test(matcher[1]);
-  const mwLimiter = Boolean(mwSrc && hasLimiter(mwSrc) && matcherCoversApi);
+  const mwLimiter = Boolean(mwSrc && hasLimiter(mwSrc) && matcherCoversApi(matcher ? matcher[1] : null));
   const files = walk(root).filter((f) => isRouteFile(relative(root, f)));
   for (const file of files) {
     const src = read(file);
@@ -93,6 +166,8 @@ export function scan(root) {
       const m = s.re.exec(src);
       if (m) hits.push({ sink: s, line: lineOf(src, m.index), via: null });
     }
+    const f = findAiFetch(src);
+    if (f >= 0) hits.push({ sink: FETCH_SINK, line: lineOf(src, f), via: null });
     // One level of local imports (e.g. route -> lib/ai.ts -> openai)
     let helperLimiter = false;
     for (const m of src.matchAll(IMPORT_RE)) {
@@ -101,7 +176,8 @@ export function scan(root) {
       const hs = read(target);
       if (!hs) continue;
       if (hasLimiter(hs)) helperLimiter = true;
-      for (const s of SINKS) if (s.re.test(hs) && !hits.some((h) => h.sink.id === s.id)) hits.push({ sink: s, line: lineOf(src, m.index), via: relative(root, target).split("\\").join("/") });
+      const fs = findAiFetch(hs) >= 0 ? [FETCH_SINK] : [];
+      for (const s of [...SINKS, ...fs]) if ((s === FETCH_SINK || s.re.test(hs)) && !hits.some((h) => h.sink.id === s.id)) hits.push({ sink: s, line: lineOf(src, m.index), via: relative(root, target).split("\\").join("/") });
     }
     if (!hits.length || routeHasLimiter || helperLimiter) continue;
     const seen = new Set();

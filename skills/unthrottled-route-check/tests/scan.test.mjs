@@ -89,10 +89,56 @@ test("LOW-R2: a query .limit(10) or the bare word limiter/throttle doesn't count
   assert.ok(files.includes("app/api/words/route.ts"));
 });
 
-test("limiter detection: imports and calls", async () => {
+test("limiter detection: real limiter import plus a call on it", async () => {
   const { hasLimiter } = await import("../scripts/scan-unthrottled.mjs");
-  for (const src of ['import { Ratelimit } from "@upstash/ratelimit"', 'import { enforce } from "@/lib/ratelimit"', "await ratelimit.limit(id)", "await aiLimiter.limit(id)", "await rl.limit(ip)", "await rateLimit(req)", "await aj.protect(req)"]) assert.ok(hasLimiter(src), src);
-  for (const src of ['db.from("x").select().limit(10)', 'const limiter = "x"', "// ratelimit later", "throttleMs = 5"]) assert.ok(!hasLimiter(src), src);
+  const yes = [
+    'import { Ratelimit } from "@upstash/ratelimit"\nconst rl = new Ratelimit({});\nawait rl.limit(id)',
+    'import { enforce, upstashLimiter } from "@/lib/ratelimit"\nconst l = upstashLimiter(x);\nawait enforce(l, id)',
+    'import { rateLimit } from "../lib/rate-limit"\nawait rateLimit(req)',
+    'import arcjet from "@arcjet/next"\nconst aj = arcjet({});\nawait aj.protect(req)',
+    'import { limiter as lim } from "./limiter"\nawait lim.limit("u")',
+    'import { upstashLimiter } from "@/lib/ratelimit"\nconst limiter = upstashLimiter(p);\nawait guardedCheckout({ limiter })',
+  ];
+  const no = [
+    'import { enforce } from "@/lib/ratelimit"',
+    "await ratelimit.limit(id)",
+    "rateLimits.limit(5)",
+    "aj.protect(req)",
+    'import { notes } from "@/lib/ratelimit-docs/notes"\nnotes()',
+    'import { Ratelimit } from "@upstash/ratelimit"\nconst rl = new Ratelimit({});',
+    'import type { Limiter } from "./ratelimit"\nfoo()',
+    'db.from("x").select().limit(10)',
+  ];
+  for (const src of yes) assert.ok(hasLimiter(src), src);
+  for (const src of no) assert.ok(!hasLimiter(src), src);
+});
+
+test("LOW: path containing 'ratelimit', rateLimits.limit(, .protect( without Arcjet, unused limiter -> still flagged", () => {
+  const r = scan(fx("noise"));
+  assert.equal(r.scannedRoutes, 3);
+  assert.deepEqual(r.findings.map((f) => f.file).sort(), ["app/api/protect/route.ts", "app/api/rlpath/route.ts", "app/api/unused/route.ts"]);
+});
+
+test("LOW: fetch with a const or template-literal base URL to the OpenAI/Anthropic hosts is an AI call", () => {
+  const r = scan(fx("fetchbase"));
+  assert.deepEqual(r.findings.map(key).sort(), [
+    "U1-unthrottled-ai-route app/api/constbase/route.ts:3 high",
+    "U1-unthrottled-ai-route app/api/newurl/route.ts:2 high",
+    "U1-unthrottled-ai-route app/api/tpl/route.ts:3 high",
+  ]);
+});
+
+test("MEDIUM: matcher with a negative lookahead excluding api keeps full severity and CI exits 1", async () => {
+  const { matcherCoversApi } = await import("../scripts/scan-unthrottled.mjs");
+  assert.equal(matcherCoversApi('["/((?!api|_next/static|_next/image|favicon.ico).*)"]'), false);
+  assert.equal(matcherCoversApi('"/((?!_next/static|favicon.ico).*)"'), true);
+  assert.equal(matcherCoversApi('["/api/:path*"]'), true);
+  assert.equal(matcherCoversApi('["/dashboard/:path*"]'), false);
+  assert.equal(matcherCoversApi(null), true);
+  const r = scan(fx("mwlookahead"));
+  assert.equal(r.middlewareLimiter, false);
+  assert.deepEqual(r.findings.map((f) => f.severity), ["high"]);
+  assert.equal(spawnSync(process.execPath, [script, fx("mwlookahead")]).status, 1);
 });
 
 test("middleware limiter whose matcher excludes /api does not downgrade", () => {
@@ -111,4 +157,12 @@ test("LOW-R1: import regex stays fast on a 500 KB route of 'import a '", async (
   const t = Date.now();
   scan(d);
   assert.ok(Date.now() - t < 2000, `took ${Date.now() - t} ms`);
+});
+
+test("bounded regexes: limiter, import and fetch detection stay fast on pathological input", async () => {
+  const { hasLimiter, findAiFetch } = await import("../scripts/scan-unthrottled.mjs");
+  const inputs = ["import " + "{a,".repeat(60_000), "const x = ".repeat(60_000), 'import a from "./ratelimit"\n' + "a".repeat(400_000), 'const B = "https://api.openai.com"\n' + "fetch(new URL(".repeat(30_000)];
+  const t = Date.now();
+  for (const s of inputs) { hasLimiter(s); findAiFetch(s); }
+  assert.ok(Date.now() - t < 1500, `took ${Date.now() - t} ms`);
 });

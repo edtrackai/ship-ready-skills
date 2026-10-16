@@ -13,7 +13,7 @@ Route handlers: `app/**/route.{ts,js}`, `src/app/**/route.{ts,js}`, `pages/api/*
 
 ## Find the sinks
 Grep the route files for these method calls, whatever the client variable is called (`openai.`, `llm.`, `client.`...):
-- AI calls: `.chat.completions.create`/`.stream`/`.parse`, `.responses.create`/`.stream`/`.parse`, `.messages.create`, `.messages.stream`, `.images.generate`, `.embeddings.create`, `.completions.create`, `streamText(`, `generateText(`, `generateObject(`, `streamObject(`, and `fetch` to `https://api.openai.com/` or `https://api.anthropic.com/`
+- AI calls: `.chat.completions.create`/`.stream`/`.parse`, `.responses.create`/`.stream`/`.parse`, `.messages.create`, `.messages.stream`, `.images.generate`, `.embeddings.create`, `.completions.create`, `streamText(`, `generateText(`, `generateObject(`, `streamObject(`, and `fetch` to `https://api.openai.com` or `https://api.anthropic.com`, written as a literal or through a const base URL (``fetch(`${OPENAI_BASE}/...`)``, `fetch(ANTHROPIC_URL)`)
 - Checkout: `.checkout.sessions.create`
 
 `.messages.create` is also used by non-AI SDKs (for example SMS clients); drop those findings after reading the file.
@@ -21,9 +21,9 @@ Grep the route files for these method calls, whatever the client variable is cal
 For routes with no match, check their local imports (`./`, `../`, `@/`) one level deep: a helper such as `lib/ai.ts` may make the call.
 
 ## Look for a limiter
-A route counts as limited only when it (or the helper it imports) has a limiter import (`@upstash/ratelimit`, `@arcjet/*`, `rate-limiter-flexible`, `express-rate-limit`, `@unkey/ratelimit`, or a local module whose path contains `ratelimit`/`rate-limit`) or an actual limit call (`ratelimit.limit(`, `aiLimiter.limit(`, `rl.limit(`, `rateLimit(`, Arcjet `.protect(`), and the call runs before the sink. A database query's `.limit(10)`, a variable named `limiter`, or a mention in a comment or string doesn't count.
+A route counts as limited only when it (or the helper it imports) imports a real limiter and uses it. A real limiter is a known package (`@upstash/ratelimit`, `@arcjet/*`, `rate-limiter-flexible`, `express-rate-limit`, `@unkey/ratelimit`) or a local module whose file name is `ratelimit`, `rate-limit`, `rate-limiter` or `limiter`. Using it means calling an imported binding (`enforce(...)`, `rateLimit(req)`) or building a value from one (`const rl = new Ratelimit(...)`, `const aj = arcjet(...)`) and then using that value (`rl.limit(id)`, `aj.protect(req)`, or passing it to a guard), before the sink runs. Other paths that merely contain "ratelimit", an object such as `rateLimits.limit(5)`, `.protect(` without an Arcjet import, a database query's `.limit(10)`, an unused limiter, or a mention in a comment or string don't count.
 
-If `middleware.ts`/`proxy.ts` has a limiter, check that its `matcher` covers the route and whether it keys on the user id or only the IP. IP-only limits let one signed-in user with several IPs (or a shared office IP) through or block wrongly.
+If `middleware.ts`/`proxy.ts` has a limiter, check that its `matcher` covers the route (a negative lookahead such as `/((?!api|_next/static).*)` excludes `/api`) and whether it keys on the user id or only the IP. IP-only limits let one signed-in user with several IPs (or a shared office IP) through or block wrongly.
 
 ## Report
 For each finding give file:line, id, severity and fix.
