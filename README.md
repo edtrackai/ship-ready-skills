@@ -84,7 +84,7 @@ Made by Stack & Ship: [edtrackai.github.io](https://edtrackai.github.io/?utm_sou
 ## Related free tools
 
 - [Next.js Supabase Stripe Security Checker](https://github.com/edtrackai/nextjs-supabase-stripe-security-checker): free CLI and GitHub Action, 24 static checks for keys, auth, RLS and Stripe webhooks.
-- [Ship-Ready AI Rules (free sample)](https://github.com/edtrackai/ship-ready-ai-rules-free-sample): free Cursor/Claude rules that stop AI agents shipping these mistakes in Next.js + Supabase + Stripe.
+- [Ship-Ready AI Rules (free sample)](https://github.com/edtrackai/ship-ready-ai-rules-free-sample): free Cursor/Claude rules that help AI agents avoid shipping these mistakes in Next.js + Supabase + Stripe.
 - [AI API cost calculator](https://edtrackai.github.io/tools/ai-api-cost-calculator?utm_source=github&utm_medium=readme&utm_campaign=ship-ready-skills)
 - [Blog](https://edtrackai.github.io/blog/?utm_source=github&utm_medium=readme&utm_campaign=ship-ready-skills)
 
